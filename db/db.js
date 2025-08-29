@@ -22,7 +22,7 @@ class DB {
 
     mongoose.connect(url, { useNewUrlParser: true })
       .then(() => { console.log('Successfully connected to database') })
-      .catch((error) => { console.log(error) })
+      .catch((error) => { console.log('error connecting to DB', error) })
   }
 
   getConnection () {

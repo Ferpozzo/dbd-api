@@ -19,12 +19,10 @@ function closeProcess () {
 
 // Update characters first
 charJobs.updateKillersAndSurvivors().then(res => {
-  console.log(res)
   charactersUpdated = true
 
   // Then upgrade perks
   perkJobs.updateKillerAndSurvivorPerks().then(res => {
-    console.log(res)
     perksUpdated = true
     closeProcess()
   })
