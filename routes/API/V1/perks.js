@@ -1,6 +1,7 @@
 import express from 'express'
 import { Perk, PerkSynergy } from '../../../db/models/perk.js'
 import Prettify from '../../../utils/prettify.js'
+import { requestGemini } from '../../../services/gemini.service.js'
 
 const router = express.Router()
 
@@ -66,7 +67,7 @@ async function handleSuggest(req, res) {
     for (const perk of perks) {
       const neighbors = synergies
         .filter(s => s.perk.equals(perk._id))
-        .sort((a,b) => b.similarity - a.similarity)
+        .sort((a, b) => b.similarity - a.similarity)
         .slice(0, topN)
         .map(s => perkMap.get(s.targetPerk.toString()))
         .filter(Boolean)
@@ -117,11 +118,30 @@ async function handleSuggest(req, res) {
       }
     }
 
-    results.sort((a,b) => b.avgSimilarity - a.avgSimilarity)
-    const top3 = results.slice(0,3)
+    results.sort((a, b) => b.avgSimilarity - a.avgSimilarity)
+    let top3 = results.slice(0, 3)
+    // 🔹 Envia cada build pro Gemini pedindo explicação do estilo de gameplay
+    for (let i = 0; i < top3.length; i++) {
+      let build = top3[i]
+      const perksDescriptions = build.perks.map(p => `- ${p.name}: ${p.contentText}`).join('\n')
 
-    res.status(200).send(Prettify._JSON(top3))
-  } catch(err) {
+      const prompt = `
+        Você é um especialista em Dead by Daylight. 
+        Analise o seguinte conjunto de perks para ${type} e explique, em português, qual é o estilo de gameplay recomendado.
+        
+        Conjunto de perks:
+        ${perksDescriptions}
+
+        Responda de forma clara e bem resumida, como se fosse um resumo do próprio jogo de como deve-se jogar com este conjunto de perks, focando no estilo de jogo (ex: stealth, chase, healing, generator rush, pressão de mapa, controle de totem etc).
+        Não precisa explicar cada perk individualmente, foque no conjunto, explique uma perk específica somente quando for muito importante.
+        Não responda nada além do texto solicitado, sem introdução ou conclusão.
+        Respeite o limite máximo de 1024 caracteres para a resposta, extremamente importante!.
+      `
+      const gameplayStyle = await requestGemini(prompt)
+      build.gameplayStyle = gameplayStyle
+    }
+    res.status(200).send(Prettify._JSON(top3));
+  } catch (err) {
     console.error('Error generating perk suggestions:', err)
     res.status(500).send(Prettify._JSON({ error: err.message }))
   }
