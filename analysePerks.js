@@ -10,22 +10,33 @@ const stemmer = natural.PorterStemmer;
 const survivorKeywords = {
   healing: ["heal", "healing", "recovery"],
   speed: ["speed", "haste", "sprint", "run"],
-  stealth: ["stealth", "invisible", "hide", "silent"],
-  info: ["reveal", "aura", "see", "detect"],
-  gen: ["generator", "repair", "fix"],
-  chase: ["chase", "escape", "sprint", "vault"],
-  protection: ["shield", "safe", "rescue", "bodyblock"],
-  debuff: ["exhaustion", "penalty", "stun", "slow"],
+  stealth: ["stealth", "invisible", "hide", "silent", "detection", "crouch", "sound"],
+  info: ["reveal", "aura", "see", "detect", "location", "track", "sound", "noise"],
+  gen: ["generator", "repair", "fix", "test", "skillcheck", "skill check", "skill-check"],
+  chase: ["chase", "escape", "sprint", "vault", "pallet", "attack", "stun", "run", "celerity"],
+  protection: ["shield", "safe", "rescue", "bodyblock", "protect", "safety", "endurance"],
+  debuff: ["exhaust", "penalty", "stun", "slow", "oblivious", "blindness", "broken", "hemorrhage", "mangled", "status effect", "deep wound", "hindered"],
+  hex: ["hex", "totem", "curse", "purification", "purificate", "purificating", "blessing", "bless"],
+  altruism: ["help", "assist", "support", "team", "saving"],
+  lategame: ["exit gate", "exit gates", "gate", "gates", "after all generators are done"],
+  antituneling: ["tunnel", "target", "focus", "priority", "resistence"],
+  mobility: ["climb", "jump", "vault", "window", "pallet", "drop"],
+  mindgame: ["trick", "fake", "decoy", "mislead"],
+  item: ["item", "tool", "flashlight", "medkit", "key"],
 };
 
 const killerKeywords = {
   slowdown: ["slow", "regress", "penalty", "block"],
-  info: ["aura", "see", "reveal", "detect"],
+  gen: ["generator", "repair", "fix", "regress", "sabotage", "skillcheck", "skill check", "skill-check"],
+  info: ["aura", "see", "reveal", "detect", "track", "sound", "noise", "location"],
   tracking: ["track", "scratch", "noise", "footstep", "scream"],
-  chase: ["vault", "pallet", "stun", "hit", "attack"],
-  control: ["block", "trap", "snare", "restrict"],
-  hex: ["hex", "totem", "curse"],
-  debuff: ["exhaustion", "blindness", "broken", "hemorrhage", "mangled"],
+  chase: ["vault", "pallet", "stun", "hit", "attack", "slow", "celerity", "lunge attack", "hindered"],
+  control: ["block", "trap", "snare", "restrict", "zone", "area", "control"],
+  hex: ["hex", "totem", "curse", "purification", "purificate", "purificating"],
+  debuff: ["exhaust", "blindness", "broken", "hemorrhage", "mangled", "debuff", "status effect", "oblivious", "deep wound", "hindered"],
+  lategame: ["exit gate", "exit gates", "gate", "gates", "after all generators are done"],
+  mobility: ["speed", "haste", "sprint", "run", "jump", "window", "fast", "celerity"],
+  tuneling: ["tunnel", "target", "focus", "priority", "obsession"]
 };
 
 // Cria vetor quantitativo para cada perk
@@ -77,7 +88,13 @@ function cosineSimilarity(vecA, vecB) {
 // Analisa perks e atualiza categorias/vetores
 async function analyzeAndUpdatePerks(PerkModel, keywords) {
   const perks = await PerkModel.find({});
-  const analyzed = perks.map((perk) => analyzePerkVector(perk, keywords));
+  const analyzed = perks.map((perk) => {
+    let vectorData = analyzePerkVector(perk, keywords);
+    return {
+      ...vectorData,
+      contentText: perk.contentText,
+    };
+  });
 
   const bulkOps = analyzed.map((perk) => ({
     updateOne: {
@@ -98,7 +115,15 @@ async function calculateAndSaveSynergies(analyzedPerks, type) {
 
   for (let i = 0; i < analyzedPerks.length; i++) {
     for (let j = i + 1; j < analyzedPerks.length; j++) {
-      const similarity = cosineSimilarity(analyzedPerks[i].vector, analyzedPerks[j].vector);
+      let similarity = cosineSimilarity(analyzedPerks[i].vector, analyzedPerks[j].vector);
+      const causesExhaustion = (perk) =>
+        {
+          return perk.categories.includes('debuff') && perk.vector['debuff'] > 0 && perk?.contentText?.toLowerCase()?.includes('exhaust');
+        }
+      if (causesExhaustion(analyzedPerks[i]) && causesExhaustion(analyzedPerks[j])) {
+        similarity = 0;
+      }
+
       if (similarity > 0) {
         bulkOps.push({
           updateOne: {

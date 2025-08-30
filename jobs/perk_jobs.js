@@ -37,31 +37,39 @@ class perkJobs {
       const tds = tr.querySelectorAll('td')
       if (ths.length < 2 || tds.length < 1) continue
 
-      const iconA = ths[0].querySelector('a')
-      const nameA = ths[1].querySelector('a')
-      if (!iconA || !nameA) continue
+      const icon = ths[0].querySelector('a')
+      const name = ths[1].querySelector('a')
+      if (!icon || !name) continue
 
-      const contentA = tds[0]
-      const characterA = ths[2]?.querySelector('a')
+      const content = tds[0]
+      const character = ths[2]?.querySelectorAll('a')[1]
 
-      contentA.querySelectorAll('a').forEach(a => {
-        if (a.attributes.href && !a.attributes.href.startsWith('http')) {
-          a.setAttribute('href', this.#addURL + a.attributes.href)
+      content.querySelectorAll('a').forEach(a => {
+        if (a.rawAttributes.href && !a.rawAttributes.href.startsWith('http')) {
+          a.setAttribute('href', this.#addURL + a.rawAttributes.href)
         }
-      })
+      });
 
       let characterId = null
-      if (characterA) {
-        const characterDoc = await Character.findOne({ name: characterA.attributes.title });
+      if (character) {
+        let characterDoc = null;
+        if(character.attributes?.title === "The Troupe"){
+          characterDoc = await Character.findOne({ name: {$regex: "Aestri Yazar &amp; Baermar Uraz"} });
+        } else{
+          characterDoc = await Character.findOne(isKiller ? { killerName: {$regex: character.attributes?.title} } : { name: {$regex: character.attributes?.title} });
+        }
         if (characterDoc) characterId = characterDoc._id
+      }
+      if(!characterId && character?.attributes?.title){
+        console.error(`Character not found for perk ${name.text}, character: ${character?.attributes?.title}`);  
       }
 
       perks.push({
-        URIName: nameA.attributes.href.split('/').pop(),
-        name: nameA.text,
-        iconURL: iconA?.rawAttributes?.href || iconA?.querySelector('img')?.rawAttributes?.src,
-        content: contentA.innerHTML,
-        contentText: stripHtml(contentA.innerHTML).result,
+        URIName: name.rawAttributes.href.split('/').pop(),
+        name: name.text,
+        iconURL: icon?.rawAttributes?.href || icon?.querySelector('img')?.rawAttributes?.src,
+        content: content.innerHTML,
+        contentText: stripHtml(content.innerHTML).result,
         character: characterId,
         isKiller
       })

@@ -1,10 +1,10 @@
 
-# Dead by Daylight - Database (Modified Version)
+# Dead by Daylight - API
 
 **Modified by Luis Fernando Machado Pozzobon**  
 
-Fetches new information from the [Dead by Daylight Wiki](https://deadbydaylight.fandom.com/wiki/Dead_by_Daylight_Wiki) every hour.  
-*Original project by [Techial](https://github.com/Techial/DBD-Database). Thanks to the original author for creating the base project!*
+Fetches new information from the [Dead by Daylight Wiki](https://deadbydaylight.fandom.com/wiki/Dead_by_Daylight_Wiki) and generate suggestions of perk combos based on keywords.
+*Original project by [Techial](https://github.com/Techial/DBD-Database). Thanks to the original author for creating the base scraper project!*
 
 ---
 
@@ -17,7 +17,8 @@ Fetches new information from the [Dead by Daylight Wiki](https://deadbydaylight.
 - **Enhanced scraping:** robust HTML parsing for perks and characters, handling missing images or links.
 - **Unified endpoints** unified endpoints to show all characters and perks without discriminators.
 - **Ready for analytics:** structured models make it easy to calculate statistics like perk usage, win rates, and character combinations.
-
+- **Added feature to analyse perks using NLP** saving to database the categories and vectors of each perk, used to generate similarity  marker for each pair of perks
+- **Suggest perks based on categories** using previous analyse to search by categories and generate 3 combos based on the highest similarities between perks
 ---
 
 ## API Endpoints
@@ -73,20 +74,53 @@ Returns an array of Perk objects from all killers.
 ```
 GET /API/v1/survivor_perks
 ```
+### Suggest Combo Perks
+```
+GET /API/v1/suggest-perks?keywords=info,chase&type=Killer
+GET /API/v1/suggest-perks?keywords=stealth,gen&type=Survivor
+```
 
 ## Data Structure
 
 ### Perk
 ```json
 {
-  "_id": "mongoDB generated unique ObjectID",
-  "name": "Perk display name (With space and all characters)",
-  "URIName": "URL safe string (name of perk)",
-  "iconURL": "Perk icon URL",
-  "character": "ObjectID of Character perk belongs to - omitted if no character",
-  "content": "Display text (with HTML elements) scraped from the Wiki",
-  "contentText": "Same as \`content\` without HTML elements",
-  "type": "survivor|killer"
+  "_id": "68b2900e42ba57826f1f37bc",
+  "type": "SurvivorPerk",
+  "name": "Chemical Trap",
+  "URIName": "Chemical_Trap",
+  "categories": [
+    "speed",
+    "info",
+    "gen",
+    "chase",
+    "debuff",
+    "mobility"
+  ],
+  "character": "68b2900d42ba57826f1f3790",
+  "content": "Content in html",
+  "contentText": "This description",
+  "createdAt": "2025-08-30T05:45:50.463Z",
+  "iconURL": "https://static.wikia.nocookie.net/deadbydaylight_gamepedia_en/images/9/9a/IconPerks_chemicalTrap.png/revision/latest?cb=20230808160213",
+  "tags": [],
+  "updatedAt": "2025-08-30T06:54:41.587Z",
+  "vector": {
+    "healing": 0,
+    "speed": 1,
+    "stealth": 0,
+    "info": 2,
+    "gen": 2,
+    "chase": 4,
+    "protection": 0,
+    "debuff": 1,
+    "hex": 0,
+    "altruism": 0,
+    "lategame": 0,
+    "antituneling": 0,
+    "mobility": 4,
+    "mindgame": 0,
+    "item": 0
+    }
 }
 ```
 ### Character
@@ -125,9 +159,56 @@ GET /API/v1/survivor_perks
   "type": "Killer"
 }
 ```
+### Suggested Combo Perks
+```json
+[
+  {
+    "perks": [
+      {
+        "_id": "68b2900e42ba57826f1f37bc",
+        "type": "SurvivorPerk",
+        "name": "Chemical Trap",
+        "URIName": "Chemical_Trap",
+        "categories": [
+          "speed",
+          "info",
+          "gen",
+          "chase",
+          "debuff",
+          "mobility"
+        ],
+        "character": "68b2900d42ba57826f1f3790",
+        "content": "Content in html",
+        "contentText": "This description",
+        "createdAt": "2025-08-30T05:45:50.463Z",
+        "iconURL": "https://static.wikia.nocookie.net/deadbydaylight_gamepedia_en/images/9/9a/IconPerks_chemicalTrap.png/revision/latest?cb=20230808160213",
+        "tags": [],
+        "updatedAt": "2025-08-30T06:54:41.587Z",
+        "vector": {
+          "healing": 0,
+          "speed": 1,
+          "stealth": 0,
+          "info": 2,
+          "gen": 2,
+          "chase": 4,
+          "protection": 0,
+          "debuff": 1,
+          "hex": 0,
+          "altruism": 0,
+          "lategame": 0,
+          "antituneling": 0,
+          "mobility": 4,
+          "mindgame": 0,
+          "item": 0
+          }
+      },
+    ...
+    ],
+    "avgSimilarity": 71.62412
+  }
+]
+```
 
 ## Support
 
-If you find any missing information or bugs, feel free to open an issue or submit a pull request. All contributions are welcome!  
-
-**Acknowledgements:** This project is based on the original [DBD-Database](https://github.com/Techial/DBD-Database) by Techial. Many thanks to the original author for creating a solid foundation.
+If you find any missing information, bugs or improves, feel free to open an issue or submit a pull request. All contributions are welcome!
