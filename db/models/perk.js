@@ -7,8 +7,13 @@ const perkSchema = new Schema({
   iconURL: { type: String, required: true },
   content: { type: String, required: true },
   contentText: { type: String, required: true },
-  character: { type: Schema.Types.ObjectId, ref: 'Character', required: false }
-}, { discriminatorKey: 'type', collection: 'perks' })
+  character: { type: Schema.Types.ObjectId, ref: 'Character', required: false },
+
+  // Compatibility analisys
+  categories: [{ type: String }],
+  tags: [{ type: String }],
+  vector: { type: Map, of: Number, default: {} }
+}, { discriminatorKey: 'type', collection: 'perks', timestamps: true })
 
 export const Perk = mongoose.model('Perk', perkSchema)
 
@@ -17,3 +22,12 @@ export const SurvivorPerk = Perk.discriminator('SurvivorPerk', survivorPerkSchem
 
 const killerPerkSchema = new Schema({})
 export const KillerPerk = Perk.discriminator('KillerPerk', killerPerkSchema)
+
+const synergySchema = new Schema({
+  perk: { type: Schema.Types.ObjectId, ref: 'Perk', required: true },
+  targetPerk: { type: Schema.Types.ObjectId, ref: 'Perk', required: true },
+  similarity: { type: Number, required: true },
+  type: { type: String, enum: ['Survivor', 'Killer'], required: true }
+});
+
+export const PerkSynergy = mongoose.model('PerkSynergy', synergySchema);
